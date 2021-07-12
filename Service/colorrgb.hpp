@@ -1,6 +1,8 @@
 #ifndef COLOR_hpp
 #define COLOR_hpp
 
+//hey color mode
+
 class ColorRGB {
 	public:
 		enum ColorID {
