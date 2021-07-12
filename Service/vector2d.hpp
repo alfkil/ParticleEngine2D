@@ -30,6 +30,14 @@ class Vector2D {
 			return Vector2D (_x / i, _y / i);
 		}
 
+		Vector2D perp () {
+			return Vector2D (_y, -_x);
+		}
+
+		double perpdot (Vector2D const &other) {
+			return _x * other._y - _y * other._x;
+		}
+
 		Vector2D operator += (Vector2D const &other) {
 			_x += other._x;
 			_y += other._y;
@@ -65,6 +73,14 @@ class Vector2D {
 
 		double y() {
 			return _y;
+		}
+
+		double projectOnto (Vector2D other) {
+			return (_x * other._x + _y * other._y) / other.length();
+		}
+
+		void scale(double p) {
+			_x *= p; _y *= p;
 		}
 };
 #endif

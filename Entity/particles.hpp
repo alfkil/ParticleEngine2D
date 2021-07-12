@@ -7,6 +7,11 @@
 
 using namespace std;
 
+#define ABS(x) ((x) < 0.0f ? -(x) : (x))
+
+int debugFlag = 0;
+double onto1, onto2;
+
 class Particle {
 	private:
 		double _mass;
@@ -31,15 +36,25 @@ class Particle {
 		Vector2D position() {
 			return pos;
 		}
-
+		void setPosition(Vector2D newPos) {
+			pos = newPos;
+		}
 		Vector2D velocity() {
 			return vel;
+		}
+		void scaleVelocity(double f) {
+			vel = vel * f;
+		}
+		void reflect() {
+			vel = Vector2D(-vel.x(), -vel.y());
 		}
 
 		Vector2D force() {
 			return _force;
 		}
-
+		double rawForce() {
+			return sqrt(_force.x() * _force.x() + _force.y() * _force.y());
+		}
 		void addForce(Vector2D newForce) {
 			_force += newForce;
 		}
@@ -74,7 +89,10 @@ class Particle {
         bool hasGravity () {
             return _hasGravity;
         }
-
+		double distance (Vector2D d) {
+			Vector2D rel = position() - d;
+			return sqrt (rel.x()*rel.x() + rel.y() * rel.y());
+		}
 };
 
 class Ball : public Particle {
@@ -87,7 +105,7 @@ class Ball : public Particle {
 			Particle (x, y, mass),
 			_radius(radius),
 			_angle(M_PI/4.0)
-		{ }
+		{		}
 
 		double radius() {
 			return _radius;
@@ -164,13 +182,21 @@ class Bat : public Particle {
 	private:
 		double _angle;
 		double _width;
-
+		double _angularVelocity;
+		double _momentOfInertia;
+		double _torque;
+		double _drag;
+		const double restAngle = 0.0;
 	public:
 		Bat (double x, double y, double mass, double angle, double width) 
 		:	Particle (x, y, mass),
 			_angle(angle),
-			_width(width)
+			_width(width),
+			_drag(0.1)
 		{ 
+			_angularVelocity = 0.0;
+			_torque = 0.0;
+			_momentOfInertia = 1.0f / 1.0f * mass * width * width;
 			setGravity (false);
 		}
 
@@ -180,6 +206,51 @@ class Bat : public Particle {
 
 		double width() {
 			return _width;
+		}
+
+		void move (Vector2D deltap, double deltat) {
+			Vector2D d = deltap / 100.0 * mass() / deltat;
+			addForce (d);
+		}
+
+		double torque () {
+			return _torque;
+		}
+		void addTorque (double added) {
+			_torque += added;
+		}
+
+		void addDrag (double deltat) {
+			scaleVelocity ( (1.0 - _drag) ); // / deltat);
+		}
+
+		void addAngle (double angle) {
+			_angle += angle;
+		}
+
+		void addAngularVelocity (double avelo) {
+			_angularVelocity += avelo;
+		}
+
+		void scaleAngularVelocity (double f) {
+			_angularVelocity = _angularVelocity * f;
+		}
+		double angularVelocity() {
+			return _angularVelocity;
+		}
+
+		double momentOfInertia() {
+			return _momentOfInertia;
+		}
+
+		Vector2D endpoint1() {
+			double a = _angle + M_PI / 2.0;
+			return Vector2D (position().x() + cos(a) * _width / 2.0, position().y() + sin(a) * _width /2.0);
+		}
+
+		Vector2D endpoint2() {
+			double a = _angle + M_PI / 2.0;
+			return Vector2D (position().x() - cos(a) * _width / 2.0, position().y() - sin(a) * _width /2.0);
 		}
 };
 
@@ -270,6 +341,13 @@ class ParticleSystem {
 				Particle *part = particles[i];
 				part->move(deltaTime);
 			}
+			for (int i = 0; i < bats.size(); i++) {
+				Bat *bat = bats[i];
+				bat->addAngle (bat->angularVelocity() * deltaTime);
+				bat->addAngularVelocity (bat->torque() * deltaTime / bat->momentOfInertia());
+				bat->addAngularVelocity (-bat->angle());
+				bat->scaleAngularVelocity (0.95);
+			}
 		}
 
 	public:
@@ -287,6 +365,75 @@ class ParticleSystem {
 
 		vector<Bat *> &getBats () {
 			return bats;
+		}
+		void moveBat(Vector2D delta) {
+
+		}
+		void doCollisions () {
+			// balls against balls
+			for (int i = 0; i < balls.size(); i++) {
+				for (int j = i+1; j < balls.size(); j++) {
+					double distancex = balls[i]->position().x() - balls[j]->position().x();
+					double distancey = balls[i]->position().y() - balls[j]->position().y();
+					double distance = sqrt(distancex*distancex + distancey*distancey);
+
+					if(distance < balls[i]->radius() + balls[j]->radius()) {
+						balls[i]->reflect();
+						balls[j]->reflect();
+
+						//move out of contact
+						Vector2D dist(distancex, distancey);
+						float factor = balls[i]->radius() + balls[j]->radius() - distance;
+						balls[i]->setPosition(balls[i]->position() + dist * factor);
+						balls[j]->setPosition(balls[j]->position() - dist * factor);
+					}
+				}
+			}
+			// ball against sticks
+
+debugFlag = 0;
+			//balls against bats
+			for (int i = 0; i < balls.size(); i++) {
+				Ball *ball = balls[i];
+				for (int j = 0; j < bats.size(); j++) {
+					Bat *bat = bats[j];
+					Vector2D endpoint1 = bat->endpoint1();
+
+					Vector2D end1 = bat->endpoint1();
+					Vector2D end2 = bat->endpoint2();
+					Vector2D dist1 = end1 - bat->position();
+					Vector2D dist2 = end2 - bat->position();
+					Vector2D eigen1 = dist1.eigen();
+					Vector2D eigen2 = dist2.eigen();
+
+					Vector2D toBallFromBatC = ball->position() - bat->position();
+					onto1 = toBallFromBatC.projectOnto(dist1);
+					onto2 = toBallFromBatC.projectOnto(dist2);
+
+					Vector2D normal(sin(bat->angle()), cos(bat->angle()));
+					double dist3 = toBallFromBatC.projectOnto(normal);
+
+					//ends
+					eigen1.scale(onto1);
+					eigen2.scale(onto2);
+					if(onto1 > dist1.length()) {
+						Vector2D toBall = ball->position() - end1;
+						if (toBall.length() < ball->radius()) {
+							printf("Hit end 1\n");
+						}
+					}
+					else if(onto2 > dist2.length()) {
+						Vector2D toBall = ball->position() - end2;
+						if(toBall.length() < ball->radius()) {
+							printf("Hit end 2\n");
+						}
+					}
+					else if (dist3 < ball->radius()) {
+						printf("Hit center\n");
+					}
+				}
+			}
+
 		}
 };
 #endif

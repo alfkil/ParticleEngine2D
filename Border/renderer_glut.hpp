@@ -93,6 +93,52 @@ class GLUTParticleRenderer : public ParticleRenderer {
             for (int i = 0; i < bats.size(); i++) {
                 Bat *bat = bats[i];
                 drawBat (bat->position().x(), bat->position().y(), bat->angle(), bat->width(), ColorRGB(ColorRGB::COLOR_WHITE));
+            //debug
+            Vector2D end1 = bat->endpoint1();
+            Vector2D end2 = bat->endpoint2();
+            Vector2D dist1 = end1 - bat->position();
+            Vector2D dist2 = end2 - bat->position();
+            Vector2D eigen1 = dist1.eigen();
+            Vector2D eigen2 = dist2.eigen();
+            eigen1.scale(onto1);
+            eigen2.scale(onto2);
+            if(onto1 > dist1.length()) {
+                glBegin(GL_LINES);
+                    glColor3f(1.0, 0.0, 0.0);
+                    glVertex2f(bat->position().x(), bat->position().y());
+                    glVertex2f(bat->position().x() + eigen1.x(), bat->position().y() + eigen1.y());
+                    // glVertex2f(end1.x(), end1.y());
+                glEnd();
+            }
+            if(onto2 > dist2.length()) {
+                glBegin(GL_LINES);
+                    glColor3f(0.0, 1.0, 0.0);
+                    glVertex2f(bat->position().x(), bat->position().y());
+                    glVertex2f(bat->position().x() + eigen2.x(), bat->position().y() + eigen2.y());
+                    // glVertex2f(end2.x(), end2.y());
+                glEnd();
+            }
+            // switch(debugFlag) {
+            //     case 0:
+            //     glColor3f(0.2, 0.2, 0.2);
+            //     break;
+            //     case 1:
+            //     glColor3f(1.0, 0.0, 0.0);
+            //     break;
+            //     case 2:
+            //     glColor3f(0.0, 1.0, 0.0);
+            //     break;
+            //     case 3:
+            //     glColor3f(0.0, 0.0, 1.0);
+            //     break;
+            //     case 4:
+            //     glColor3f (1.0, 1.0, 1.0);
+            //     break;
+            // }
+            // glBegin(GL_LINES);
+            // glVertex2f(end1.x(), end1.y());
+            // glVertex2f(end2.x(), end2.y());
+            // glEnd();
             }
         }
 
