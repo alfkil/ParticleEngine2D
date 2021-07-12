@@ -65,13 +65,13 @@ class Game {
 			double deltaTime = 0.005;
 
 			while (time < 1000.0) {
-				system.doCollisions();
+				bat->addTorque (-bat->torque());
+				system.doCollisions(deltaTime);
 
 				system.computeForces();
 				// if (time == 0.0)
 				// 	ball1->addForce(Vector2D(20000.0, 0.0));
 
-				bat->addTorque (-bat->torque());
 				bat->addTorque(input.rotate() * (50.0*M_PI/20.0*bat->mass()/deltaTime));
 
 				bat->move(input.deltaMouse(), deltaTime);

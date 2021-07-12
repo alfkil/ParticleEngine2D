@@ -45,8 +45,10 @@ class Particle {
 		void scaleVelocity(double f) {
 			vel = vel * f;
 		}
-		void reflect() {
-			vel = Vector2D(-vel.x(), -vel.y());
+		void reflect(Vector2D normal) {
+			normal = normal.eigen();
+			vel += normal * vel.length();
+			// vel = Vector2D(-vel.x(), -vel.y());
 		}
 
 		Vector2D force() {
@@ -369,7 +371,7 @@ class ParticleSystem {
 		void moveBat(Vector2D delta) {
 
 		}
-		void doCollisions () {
+		void doCollisions (double deltaTime) {
 			// balls against balls
 			for (int i = 0; i < balls.size(); i++) {
 				for (int j = i+1; j < balls.size(); j++) {
@@ -378,8 +380,8 @@ class ParticleSystem {
 					double distance = sqrt(distancex*distancex + distancey*distancey);
 
 					if(distance < balls[i]->radius() + balls[j]->radius()) {
-						balls[i]->reflect();
-						balls[j]->reflect();
+						balls[i]->reflect(balls[i]->position() - balls[j]->position());
+						balls[j]->reflect(balls[j]->position() - balls[i]->position());
 
 						//move out of contact
 						Vector2D dist(distancex, distancey);
@@ -397,28 +399,26 @@ debugFlag = 0;
 				Ball *ball = balls[i];
 				for (int j = 0; j < bats.size(); j++) {
 					Bat *bat = bats[j];
-					Vector2D endpoint1 = bat->endpoint1();
 
 					Vector2D end1 = bat->endpoint1();
 					Vector2D end2 = bat->endpoint2();
-					Vector2D dist1 = end1 - bat->position();
+					Vector2D dist1 = end1 - bat->position(); //from center of bat to end
 					Vector2D dist2 = end2 - bat->position();
-					Vector2D eigen1 = dist1.eigen();
-					Vector2D eigen2 = dist2.eigen();
 
 					Vector2D toBallFromBatC = ball->position() - bat->position();
 					onto1 = toBallFromBatC.projectOnto(dist1);
 					onto2 = toBallFromBatC.projectOnto(dist2);
 
-					Vector2D normal(sin(bat->angle()), cos(bat->angle()));
+					Vector2D normal(cos(bat->angle()), sin(bat->angle()));
 					double dist3 = toBallFromBatC.projectOnto(normal);
 
 					//ends
-					eigen1.scale(onto1);
-					eigen2.scale(onto2);
 					if(onto1 > dist1.length()) {
 						Vector2D toBall = ball->position() - end1;
 						if (toBall.length() < ball->radius()) {
+							bat->addTorque(dist3 * (20.0*M_PI/20.0*bat->mass()/deltaTime));
+							ball->reflect(ball->position() - end1);
+
 							printf("Hit end 1\n");
 						}
 					}
@@ -426,10 +426,14 @@ debugFlag = 0;
 						Vector2D toBall = ball->position() - end2;
 						if(toBall.length() < ball->radius()) {
 							printf("Hit end 2\n");
+							bat->addTorque(-dist3 * (20.0*M_PI/20.0*bat->mass()/deltaTime));
+							ball->reflect(ball->position() - end2);
 						}
-					}
-					else if (dist3 < ball->radius()) {
+					} //side
+					else if (ABS(dist3) < ball->radius()) {
 						printf("Hit center\n");
+						ball->addForce (bat->force());
+						ball->reflect (normal);
 					}
 				}
 			}
