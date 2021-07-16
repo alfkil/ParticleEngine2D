@@ -10,6 +10,8 @@ using namespace std;
 
 #define ABS(x) ((x) < 0.0f ? -(x) : (x))
 #define SIGN(x) ((x) > 0.0 ? 1.0 : -1.0)
+#define MIN(x,y) ((x) > (y) ? (y) : (x))
+#define MAX(x,y) ((x) > (y) ? (x) : (y))
 
 int debugFlag = 0;
 double onto1, onto2;
@@ -52,7 +54,8 @@ class Particle {
 			// vel += normal * vel.length() * 1.7;
 
 		    double velocityDotProduct = vel.dot(normal);
-		    vel = Vector2D(vel.x() - 2 * velocityDotProduct * normal.x(), vel.y() - 2 * velocityDotProduct * normal.y());
+		    vel = vel - normal * 2.0 * velocityDotProduct; //Vector2D(vel.x() - 2 * velocityDotProduct * normal.x(), vel.y() - 2 * velocityDotProduct * normal.y());
+			scaleVelocity(0.95);
 		}
 
 		Vector2D force() {
@@ -100,6 +103,9 @@ class Particle {
 		double distance (Vector2D d) {
 			Vector2D rel = position() - d;
 			return sqrt (rel.x()*rel.x() + rel.y() * rel.y());
+		}
+		void maxOut(double minX, double minY, double maxX, double maxY) {
+			setPosition(Vector2D(MIN(MAX(pos.x(), minX), maxX), MIN(MAX(pos.y(), minY), maxY)));
 		}
 };
 
@@ -450,12 +456,13 @@ class ParticleSystem {
 				if(ball->position().x() < -3.2) {
 					ball->reflect(Vector2D(1.0, 0.0));
 				}
-				if(ball->position().y() > 2.0) {
+				if(ball->position().y() > 2.4) {
 					ball->reflect(Vector2D(0.0, -1.0));
 				}
-				if(ball->position().y() < -2.0) {
+				if(ball->position().y() < -2.4) {
 					ball->reflect(Vector2D(0.0, 1.0));
 				}
+				ball->maxOut(-3.2, -2.4, 3.2, 2.4);
 			}
 			//balls against bats
 			for (int i = 0; i < balls.size(); i++) {
@@ -523,16 +530,8 @@ class ParticleSystem {
 						//apply impulse
 						ball->addVelocity(collisionNormal.eigen(), J / ball->mass());
 						bat->addVelocity(collisionNormal.eigen(), -J / bat->mass());
-						ball->addTorque (10.0 * dist3 * SIGN(dist4) * J) ;// / ball->momentOfInertia());
+						ball->addTorque (20.0 * dist3 * SIGN(dist4) * J) ;// / ball->momentOfInertia());
 						bat->addAngularVelocity (-10.0 * dist3 * SIGN(dist4) * J ) ; /// bat->momentOfInertia());
-				
-				// 		//spin
-				// 		// Vector2D
-				// 		// vector2 batperp, velproj;
-				// 		// vector_copy(&mybat.normal, &batperp);
-				// 		// vector_perp(&batperp);
-				// 		// vector_project(&relativevel, &batperp, &velproj);
-				// 		// myball.angularvelocity -= 0.01*vector_length(&velproj)*j/myball.momentofinertia;
 					}
 				}
 			}

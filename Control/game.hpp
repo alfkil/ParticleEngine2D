@@ -60,7 +60,7 @@ class Game {
         void play() {
 			renderer->setWorld(&system);
 
-			system.setGravity(9.790); //earth
+			system.setGravity(97.90); //earth
 			double time = 0.0;
 			double deltaTime = 0.005;
 
