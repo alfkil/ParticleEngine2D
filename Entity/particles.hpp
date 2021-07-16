@@ -392,7 +392,7 @@ class ParticleSystem {
 				ball->addAngle (ball->angularVelocity() * deltaTime);
 				ball->addAngularVelocity (ball->torque() * deltaTime / ball->momentOfInertia());
 //				ball->addAngularVelocity (-ball->angle());
-				ball->scaleAngularVelocity (0.95); //angular drag
+				ball->scaleAngularVelocity (1.0 - 0.05 * deltaTime); //angular drag
 				ball->scaleVelocity(1.0 - 0.1 * deltaTime); //drag
 			}
 		}
@@ -483,7 +483,7 @@ class ParticleSystem {
 							collision = true;
 							collisionPoint = end1;
 							collisionNormal = toBall;
-							printf("Hit end 1\n");
+							// printf("Hit end 1\n");
 						// de-collide - move out of the way
 							ball->setPosition (ball->position() + (ball->position() - end1) * (normal.perp().length() - ball->radius()));
 						}
@@ -491,7 +491,7 @@ class ParticleSystem {
 					else if(onto2 > dist2.length()) {
 						Vector2D toBall = ball->position() - end2;
 						if(toBall.length() < ball->radius()) {
-							printf("Hit end 2\n");
+							// printf("Hit end 2\n");
 							collision = true;
 							collisionPoint = end2;
 							collisionNormal = toBall;
@@ -500,7 +500,7 @@ class ParticleSystem {
 						}
 					} //side
 					else if (ABS(dist3) < ball->radius()) {
-						printf("Hit center\n");
+						// printf("Hit center\n");
 						collision = true;
 						collisionPoint = bat->position();
 						collisionNormal = toBallFromBatC;
@@ -513,17 +513,15 @@ class ParticleSystem {
 						Vector2D rap = collisionPoint - ball->position();
 						Vector2D rbp = collisionPoint - bat->position();
 						
-						const double restitution = 0.9;
-						Vector2D perprbp = rbp.perp();
 						Vector2D relativeVelocity = ball->velocity()- bat->velocity();	 // - perprbp * bat->angularVelocity();
 
-						double J = -5.0 * (relativeVelocity.dot(collisionNormal)) /
+						double J = -0.5 * (relativeVelocity.dot(collisionNormal)) /
 									(collisionNormal.dot(collisionNormal));
 
 						//apply impulse
 						ball->addVelocity(collisionNormal.eigen(), J / ball->mass());
 						bat->addVelocity(collisionNormal.eigen(), -J / bat->mass());
-						ball->addAngularVelocity (20.0 * dist3 * SIGN(dist4) * J) ;// / ball->momentOfInertia());
+						ball->addTorque (10.0 * dist3 * SIGN(dist4) * J) ;// / ball->momentOfInertia());
 						bat->addAngularVelocity (-10.0 * dist3 * SIGN(dist4) * J ) ; /// bat->momentOfInertia());
 				
 				// 		//spin

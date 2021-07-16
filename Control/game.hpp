@@ -14,7 +14,7 @@ class Game {
 		ParticleSystem system;
         ParticleRenderer *renderer;
 
-		Ball *ball1;
+		Ball *ball;
 		Bat *bat;
 
 		Input input;
@@ -30,9 +30,9 @@ class Game {
 		void initialize() {
 			//srand(time(0));
 
-			ball1 = system.addBall (
+			ball = system.addBall (
 							0.0, -2.0, //position
-							5.0,	//mass
+							0.2,	//mass
 							0.2 	//radius
                             );
 			//Stick *stick1 = system.addStick (0.0, 0.0, 0.1);
@@ -53,7 +53,7 @@ class Game {
 			// Stick *stick3 = system.addStick (0.0, 0.0, 0.1);
 			// system.addRope (stick3, ball3, 8); //number of joints on rope
 
-			bat = system.addBat (0.0, 1.0, 50.0 /*mass*/, 0.0 /*M_PI/2.0*/ /*angle*/, 0.3 /*width*/);
+			bat = system.addBat (0.0, 1.0, 2.0 /*mass*/, 0.0 /*M_PI/2.0*/ /*angle*/, 0.3 /*width*/);
 		}
 
     public:
@@ -66,15 +66,17 @@ class Game {
 
 			while (time < 1000.0) {
 				bat->addTorque (-bat->torque());
+				ball->addTorque (-ball->torque());
+
 				system.doCollisions(deltaTime);
 
 				system.computeForces();
 				// if (time == 0.0)
 				// 	ball1->addForce(Vector2D(20000.0, 0.0));
 
-				bat->addTorque(input.rotate() * (50.0*M_PI/20.0*bat->mass()/deltaTime));
+				bat->addTorque(input.rotate() * (5.0/2.0*M_PI*bat->mass()/deltaTime));
 
-				bat->move(input.deltaMouse(), deltaTime);
+				bat->move(input.deltaMouse() * bat->mass() * 10.0, deltaTime);
 				bat->addDrag(deltaTime);
 
 				system.animate(deltaTime);
