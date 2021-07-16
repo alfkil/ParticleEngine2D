@@ -32,11 +32,11 @@ class Game {
 
 			ball1 = system.addBall (
 							0.0, -2.0, //position
-							10.0,	//mass
-							0.4 	//radius
+							5.0,	//mass
+							0.2 	//radius
                             );
-			Stick *stick1 = system.addStick (0.0, 0.0, 0.1);
-			system.addRope (stick1, ball1, 8); //number of joints on rope
+			//Stick *stick1 = system.addStick (0.0, 0.0, 0.1);
+			//system.addRope (stick1, ball1, 8); //number of joints on rope
 
 			// Ball *ball2 = system.addBall (
 			// 				-1.0, -2.0, //position
@@ -60,7 +60,7 @@ class Game {
         void play() {
 			renderer->setWorld(&system);
 
-			system.setGravity(9.790); //earth
+			system.setGravity(0.0);//9.790); //earth
 			double time = 0.0;
 			double deltaTime = 0.005;
 

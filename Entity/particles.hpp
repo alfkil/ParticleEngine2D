@@ -2,12 +2,14 @@
 #define PARTICLES_hpp
 
 #include "../Service/vector2d.hpp"
+#include <math.h>
 
 #include <vector>
 
 using namespace std;
 
 #define ABS(x) ((x) < 0.0f ? -(x) : (x))
+#define SIGN(x) ((x) > 0.0 ? 1.0 : -1.0)
 
 int debugFlag = 0;
 double onto1, onto2;
@@ -60,7 +62,9 @@ class Particle {
 		void addForce(Vector2D newForce) {
 			_force += newForce;
 		}
-
+		void addVelocity (Vector2D d, double f) {
+			vel += d * f;
+		}
 		void resetForce() {
 			_force = Vector2D(0.0, 0.0);
 		}
@@ -101,13 +105,20 @@ class Ball : public Particle {
 	private:
 		double _radius;
 		double _angle;
+		double _angularVelocity;
+		double _momentOfInertia;
+		double _torque;
 
 	public:
 		Ball (double x, double y, double mass, double radius) :
 			Particle (x, y, mass),
 			_radius(radius),
 			_angle(M_PI/4.0)
-		{		}
+		{
+			_angularVelocity = 0.0;
+			_torque = 0.0;
+			_momentOfInertia = 1.0f / 1.0f * mass * radius * radius;
+		}
 
 		double radius() {
 			return _radius;
@@ -116,6 +127,32 @@ class Ball : public Particle {
 		double angle() {
 			return _angle;
 		}
+		double torque () {
+			return _torque;
+		}
+				void addTorque (double added) {
+			_torque += added;
+		}
+
+		void addAngle (double angle) {
+			_angle += angle;
+		}
+
+		void addAngularVelocity (double avelo) {
+			_angularVelocity += avelo;
+		}
+
+		void scaleAngularVelocity (double f) {
+			_angularVelocity = _angularVelocity * f;
+		}
+		double angularVelocity() {
+			return _angularVelocity;
+		}
+
+		double momentOfInertia() {
+			return _momentOfInertia;
+		}
+
 };
 
 class Stick : public Particle {
@@ -350,6 +387,14 @@ class ParticleSystem {
 				bat->addAngularVelocity (-bat->angle());
 				bat->scaleAngularVelocity (0.95);
 			}
+			for (int i = 0; i < balls.size(); i++) {
+				Ball *ball = balls[i];
+				ball->addAngle (ball->angularVelocity() * deltaTime);
+				ball->addAngularVelocity (ball->torque() * deltaTime / ball->momentOfInertia());
+//				ball->addAngularVelocity (-ball->angle());
+				ball->scaleAngularVelocity (0.95); //angular drag
+				ball->scaleVelocity(1.0 - 0.1 * deltaTime); //drag
+			}
 		}
 
 	public:
@@ -393,7 +438,23 @@ class ParticleSystem {
 			}
 			// ball against sticks
 
-debugFlag = 0;
+			//balls against sides
+			for (int i = 0; i < balls.size(); i++) {
+				Ball *ball = balls[i];
+
+				if (ball->position().x() > 3.2) {
+					ball->reflect(Vector2D(-1.0, 0.0));
+				}
+				if(ball->position().x() < -3.2) {
+					ball->reflect(Vector2D(1.0, 0.0));
+				}
+				if(ball->position().y() > 2.0) {
+					ball->reflect(Vector2D(0.0, -1.0));
+				}
+				if(ball->position().y() < -2.0) {
+					ball->reflect(Vector2D(0.0, 1.0));
+				}
+			}
 			//balls against bats
 			for (int i = 0; i < balls.size(); i++) {
 				Ball *ball = balls[i];
@@ -411,29 +472,67 @@ debugFlag = 0;
 
 					Vector2D normal(cos(bat->angle()), sin(bat->angle()));
 					double dist3 = toBallFromBatC.projectOnto(normal);
+					double dist4 = toBallFromBatC.projectOnto(normal.perp());
 
+					bool collision = false;
+					Vector2D collisionPoint, collisionNormal;
 					//ends
 					if(onto1 > dist1.length()) {
 						Vector2D toBall = ball->position() - end1;
 						if (toBall.length() < ball->radius()) {
-							bat->addTorque(dist3 * (20.0*M_PI/20.0*bat->mass()/deltaTime));
-							ball->reflect(ball->position() - end1);
-
+							collision = true;
+							collisionPoint = end1;
+							collisionNormal = toBall;
 							printf("Hit end 1\n");
+						// de-collide - move out of the way
+							ball->setPosition (ball->position() + (ball->position() - end1) * (normal.perp().length() - ball->radius()));
 						}
 					}
 					else if(onto2 > dist2.length()) {
 						Vector2D toBall = ball->position() - end2;
 						if(toBall.length() < ball->radius()) {
 							printf("Hit end 2\n");
-							bat->addTorque(-dist3 * (20.0*M_PI/20.0*bat->mass()/deltaTime));
-							ball->reflect(ball->position() - end2);
+							collision = true;
+							collisionPoint = end2;
+							collisionNormal = toBall;
+						// de-collide - move out of the way
+							ball->setPosition (ball->position() + (ball->position() - end2) * (normal.perp().length() - ball->radius()));
 						}
 					} //side
 					else if (ABS(dist3) < ball->radius()) {
 						printf("Hit center\n");
-						ball->addForce (bat->force());
-						ball->reflect (normal);
+						collision = true;
+						collisionPoint = bat->position();
+						collisionNormal = toBallFromBatC;
+						// de-collide - move out of the way
+						ball->setPosition (ball->position() + normal * (dist3 - ball->radius()));
+					}
+
+					if(collision) {
+						collisionNormal = collisionNormal.eigen();
+						Vector2D rap = collisionPoint - ball->position();
+						Vector2D rbp = collisionPoint - bat->position();
+						
+						const double restitution = 0.9;
+						Vector2D perprbp = rbp.perp();
+						Vector2D relativeVelocity = ball->velocity()- bat->velocity();	 // - perprbp * bat->angularVelocity();
+
+						double J = -5.0 * (relativeVelocity.dot(collisionNormal)) /
+									(collisionNormal.dot(collisionNormal));
+
+						//apply impulse
+						ball->addVelocity(collisionNormal.eigen(), J / ball->mass());
+						bat->addVelocity(collisionNormal.eigen(), -J / bat->mass());
+						ball->addAngularVelocity (20.0 * dist3 * SIGN(dist4) * J) ;// / ball->momentOfInertia());
+						bat->addAngularVelocity (-10.0 * dist3 * SIGN(dist4) * J ) ; /// bat->momentOfInertia());
+				
+				// 		//spin
+				// 		// Vector2D
+				// 		// vector2 batperp, velproj;
+				// 		// vector_copy(&mybat.normal, &batperp);
+				// 		// vector_perp(&batperp);
+				// 		// vector_project(&relativevel, &batperp, &velproj);
+				// 		// myball.angularvelocity -= 0.01*vector_length(&velproj)*j/myball.momentofinertia;
 					}
 				}
 			}
@@ -441,3 +540,94 @@ debugFlag = 0;
 		}
 };
 #endif
+			// //balls against bats
+			// for (int i = 0; i < balls.size(); i++) {
+			// 	Ball *ball = balls[i];
+			// 	for (int j = 0; j < bats.size(); j++) {
+			// 		Bat *bat = bats[j];
+
+			// 		Vector2D end1 = bat->endpoint1();
+			// 		Vector2D end2 = bat->endpoint2();
+			// 		Vector2D dist1 = end1 - bat->position(); //from center of bat to end
+			// 		Vector2D dist2 = end2 - bat->position();
+
+			// 		Vector2D toBallFromBatC = ball->position() - bat->position();
+			// 		onto1 = toBallFromBatC.projectOnto(dist1);
+			// 		onto2 = toBallFromBatC.projectOnto(dist2);
+
+			// 		Vector2D normal(cos(bat->angle()), sin(bat->angle()));
+			// 		double dist3 = toBallFromBatC.projectOnto(normal);
+
+			// 		double dist4 = toBallFromBatC.projectOnto(normal.perp());
+
+			// 		bool collision = false;
+			// 		Vector2D collisionPoint, collisionNormal;
+			// 		//ends
+			// 		if(onto1 > dist1.length()) {
+			// 			Vector2D toBall = ball->position() - end1;
+			// 			if (toBall.length() < ball->radius()) {
+			// 				collision = true;
+			// 				collisionPoint = end1;
+			// 				collisionNormal = toBall;
+			// 				// bat->addTorque(dist3 * (20.0*M_PI/20.0*bat->mass()/deltaTime));
+			// 				// ball->reflect(ball->position() - end1);
+			// 				// ball->addTorque (dist4 * (20.0*M_PI/20.0*ball->mass()/deltaTime));
+			// 				printf("Hit end 1\n");
+			// 			}
+			// 		}
+			// 		else if(onto2 > dist2.length()) {
+			// 			Vector2D toBall = ball->position() - end2;
+			// 			if(toBall.length() < ball->radius()) {
+			// 				printf("Hit end 2\n");
+			// 				collision = true;
+			// 				collisionPoint = end2;
+			// 				collisionNormal = toBall;
+			// 				// bat->addTorque(-dist3 * (20.0*M_PI/20.0*bat->mass()/deltaTime));
+			// 				// ball->reflect(ball->position() - end2);
+			// 				// ball->addTorque (dist4 * (20.0*M_PI/20.0*ball->mass()/deltaTime));
+			// 			}
+			// 		} //side
+			// 		else if (ABS(dist3) < ball->radius()) {
+			// 			printf("Hit center\n");
+			// 			collision = true;
+			// 			collisionPoint = bat->position();
+			// 			collisionNormal = toBallFromBatC;
+			// 			// ball->addForce (bat->force());
+			// 			// ball->reflect (normal);
+			// 				// ball->addTorque (dist4 * (20.0*M_PI/20.0*ball->mass()/deltaTime));
+			// 		}
+
+			// 		if(collision) {
+			// 			collisionNormal = collisionNormal.eigen();
+			// 			Vector2D rap = collisionPoint - ball->position();
+			// 			Vector2D rbp = collisionPoint - bat->position();
+			// 			double rapperp = rap.perpdot(collisionNormal);
+			// 			double rbpperp = rbp.perpdot(collisionNormal);
+				
+			// 			const double restitution = 0.9;
+			// 			Vector2D perprbp = rbp.perp();
+			// 			Vector2D relativeVelocity = ball->velocity()- bat->velocity() - perprbp * bat->angularVelocity();
+				
+			// 			// double J = -(1 + restitution)*(relativeVelocity.dot(collisionNormal)) /
+			// 			// 			(collisionNormal.dot(collisionNormal)) *
+			// 			// 			(1/bat->mass() + 1/ball->mass()  + (rbpperp*rbpperp)/bat->momentOfInertia()); //+ sqr(rapperp)/myball.momentofinertia
+
+
+			// 			double J = -5.0 * (relativeVelocity.dot(collisionNormal)) /
+			// 						(collisionNormal.dot(collisionNormal));
+
+			// 			//apply impulse
+			// 			ball->addVelocity(collisionNormal.eigen(), J / ball->mass());
+			// 			bat->addVelocity(collisionNormal.eigen(), -J / bat->mass());
+			// 			ball->addAngularVelocity (-dist3 * J) ;// / ball->momentOfInertia());
+			// 			bat->addAngularVelocity (-dist3 * J ) ; /// bat->momentOfInertia());
+				
+			// 	// 		//spin
+			// 	// 		// Vector2D
+			// 	// 		// vector2 batperp, velproj;
+			// 	// 		// vector_copy(&mybat.normal, &batperp);
+			// 	// 		// vector_perp(&batperp);
+			// 	// 		// vector_project(&relativevel, &batperp, &velproj);
+			// 	// 		// myball.angularvelocity -= 0.01*vector_length(&velproj)*j/myball.momentofinertia;
+			// 		}
+			// 	}
