@@ -48,9 +48,11 @@ class Particle {
 			vel = vel * f;
 		}
 		void reflect(Vector2D normal) {
-			normal = normal.eigen();
-			vel += normal * vel.length();
-			// vel = Vector2D(-vel.x(), -vel.y());
+			// normal = normal.eigen() * vel.length();
+			// vel += normal * vel.length() * 1.7;
+
+		    double velocityDotProduct = vel.dot(normal);
+		    vel = Vector2D(vel.x() - 2 * velocityDotProduct * normal.x(), vel.y() - 2 * velocityDotProduct * normal.y());
 		}
 
 		Vector2D force() {
