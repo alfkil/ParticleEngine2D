@@ -82,5 +82,9 @@ class Vector2D {
 		void scale(double p) {
 			_x *= p; _y *= p;
 		}
+
+		Vector2D negate() {
+			return Vector2D(-_x, -_y);
+		}
 };
 #endif

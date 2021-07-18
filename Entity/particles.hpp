@@ -361,7 +361,7 @@ class ParticleSystem {
 			Particle *prevPart = stick;
 			for (int i = 0; i < joints; i++) {
 				pos += inc;
-				Particle *part = addParticle (pos.x(), pos.y(), 0.5);
+				Particle *part = addParticle (pos.x(), pos.y(), 0.1);
 
 				addSpring (prevPart, part, length);
 				prevPart = part;
@@ -428,19 +428,29 @@ class ParticleSystem {
 			// balls against balls
 			for (int i = 0; i < balls.size(); i++) {
 				for (int j = i+1; j < balls.size(); j++) {
-					double distancex = balls[i]->position().x() - balls[j]->position().x();
-					double distancey = balls[i]->position().y() - balls[j]->position().y();
-					double distance = sqrt(distancex*distancex + distancey*distancey);
+					Ball *ball1 = balls[i];
+					Ball *ball2 = balls[j];
+					Vector2D dist = ball1->position() - ball2->position();
 
-					if(distance < balls[i]->radius() + balls[j]->radius()) {
-						balls[i]->reflect(balls[i]->position() - balls[j]->position());
-						balls[j]->reflect(balls[j]->position() - balls[i]->position());
-
+					if(dist.length() < ball1->radius() + ball2->radius()) {
 						//move out of contact
-						Vector2D dist(distancex, distancey);
-						float factor = balls[i]->radius() + balls[j]->radius() - distance;
-						balls[i]->setPosition(balls[i]->position() + dist * factor);
-						balls[j]->setPosition(balls[j]->position() - dist * factor);
+						float factor = ball1->radius() + ball2->radius() - dist.length();
+						ball1->setPosition(ball1->position() + dist * factor / 2.0);
+						ball2->setPosition(ball2->position() - dist * factor / 2.0);
+
+						Vector2D relativeVelocity = ball1->velocity()- ball2->velocity();	 // - perprbp * bat->angularVelocity();
+
+						Vector2D collisionNormal = dist;
+						double J = -0.5 * (relativeVelocity.dot(collisionNormal)) /
+									(collisionNormal.dot(collisionNormal));
+
+						//apply impulse
+						ball1->addVelocity(collisionNormal.eigen(), J / ball1->mass());
+						ball2->addVelocity(collisionNormal.eigen(), -J / ball2->mass());
+						double dist3 = ball1->velocity().projectOnto(collisionNormal.perp());
+						double dist4 = ball1->velocity().projectOnto(collisionNormal);
+						ball1->addTorque (20.0 * dist3 * SIGN(dist4) * J) ;// / ball->momentOfInertia());
+						ball2->addTorque (-20.0 * dist3 * SIGN(dist4) * J) ;// / ball->momentOfInertia());
 					}
 				}
 			}
