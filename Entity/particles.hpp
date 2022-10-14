@@ -496,13 +496,16 @@ class ParticleSystem {
 				for (int j = 0; j < bats.size(); j++) {
 					Bat *bat = bats[j];
 
-					Vector2D toBallFromBatC = ball->position() - bat->position();
+					Vector2D toBall = ball->position() - bat->position();
 
-					double projNorm = toBallFromBatC.projectOnto(bat->normal());
-					double projPerpNorm = toBallFromBatC.projectOnto(bat->normal().perp());
+					double projNorm = toBall.projectOnto(bat->normal());
+					double projPerpNorm = toBall.projectOnto(bat->normal().perp());
 
 					bool collision = false;
 					Vector2D collisionPoint, collisionNormal;
+
+					// note : test for three intervals
+					// (to the left of bat, to the right of bat, within range of middle of bat)
 
 					// test for collision with end1
 					if(projPerpNorm < -bat->width()/2.0) {

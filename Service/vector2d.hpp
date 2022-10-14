@@ -81,7 +81,9 @@ class Vector2D {
 		}
 
 		double projectOnto (Vector2D other) {
-			return (_x * other._x + _y * other._y) / other.length();
+			if(other.length())
+				return (_x * other._x + _y * other._y) / other.length();
+			else return 0.0f;
 		}
 
 		void scale(double p) {
