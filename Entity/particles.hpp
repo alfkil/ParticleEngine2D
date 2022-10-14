@@ -442,13 +442,19 @@ class ParticleSystem {
 
 						Vector2D relativeVelocity = ball1->velocity()- ball2->velocity();	 // - perprbp * bat->angularVelocity();
 
-						Vector2D collisionNormal = dist;
-						double J = -0.2 * (relativeVelocity.dot(collisionNormal)) /
-									(collisionNormal.dot(collisionNormal));
+						Vector2D collisionNormal = dist.eigen();
+						double J = -2.0 * (relativeVelocity.dot(collisionNormal)); // /
+									// (collisionNormal.dot(collisionNormal));
+						J /= 1.0 / ball1->mass() + 1.0 / ball2->mass();
+
+						std::cout << "J: " << J << "\n";
+						Vector2D Impulse = collisionNormal * J;
+						//apply impulse
+						std::cout << "Impulse : " << Impulse.toString() << "\n";
 
 						//apply impulse
-						ball1->addVelocity(collisionNormal.eigen(), J / ball1->mass());
-						ball2->addVelocity(collisionNormal.eigen(), -J / ball2->mass());
+						ball1->addVelocity(Impulse, 1.0 / ball1->mass());
+						ball2->addVelocity(Impulse, -1.0 / ball2->mass());
 						double dist3 = ball1->velocity().projectOnto(collisionNormal.perp());
 						double dist4 = ball1->velocity().projectOnto(collisionNormal);
 						ball1->addTorque (dist3 * SIGN(dist4) * J) ;// / ball->momentOfInertia());
@@ -537,10 +543,10 @@ class ParticleSystem {
 						// Vector2D rap = collisionPoint - ball->position();
 						// Vector2D rbp = collisionPoint - bat->position();
 						
-						Vector2D relativeVelocity = ball->velocity() - bat->velocity();	 // - perprbp * bat->angularVelocity();
+						Vector2D relativeVelocity = bat->velocity() - ball->velocity();	 // - perprbp * bat->angularVelocity();
 
 						//why do we need such an odd coefficient?
-						double J = 2.0 * relativeVelocity.dot(collisionNormal); // /
+						double J = 1.8 * relativeVelocity.dot(collisionNormal); // /
 							// collisionNormal.dot(collisionNormal);
 
 						// if(J < 0) continue;
@@ -551,8 +557,8 @@ class ParticleSystem {
 						//apply impulse
 						std::cout << "Impulse : " << Impulse.toString() << "\n";
 
-						ball->addVelocity(Impulse, -1.0 / ball->mass());
-						bat->addVelocity(Impulse, 1.0 / bat->mass());
+						ball->addVelocity(Impulse, 1.0 / ball->mass());
+						bat->addVelocity(Impulse, -1.0 / bat->mass());
 						ball->addTorque (20.0 * dist3 * SIGN(dist4) * J) ;// / ball->momentOfInertia());
 						bat->addAngularVelocity (-10.0 * dist3 * SIGN(dist4) * J ) ; /// bat->momentOfInertia());
 					}

@@ -32,7 +32,7 @@ class Game {
 
 			ball = system.addBall (
 							0.0, -2.0, //position
-							.2,	//mass
+							0.7,	//mass
 							0.2 	//radius
                             );
 			// Stick *stick1 = system.addStick (-1.0, -1.0, 0.1);
@@ -53,7 +53,7 @@ class Game {
 			// Stick *stick3 = system.addStick (1.0, -1.0, 0.1);
 			// system.addRope (stick3, ball3, 8); //number of joints on rope
 
-			bat = system.addBat (0.0, 1.0, 0.7 /*mass*/, 0.0 /*M_PI/2.0*/ /*angle*/, 0.3 /*width*/);
+			bat = system.addBat (0.0, 1.0, 2.0 /*mass*/, 0.0 /*M_PI/2.0*/ /*angle*/, 0.3 /*width*/);
 		}
 
     public:
