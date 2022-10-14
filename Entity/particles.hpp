@@ -540,11 +540,10 @@ class ParticleSystem {
 					else if (ABS(dist3) < ball->radius()) {
 						collision = true;
 						collisionPoint = bat->position();
-						collisionNormal = bat->normal() * SIGN(dist3); // this could be a bit more in
+						collisionNormal = bat->normal() * SIGN(dist3);
 
 						// move out of contact
-						// if(dist3 - ball->radius() < 0.0)
-						// 	ball->setPosition (ball->position() - collisionNormal * (dist3 - ball->radius()));
+						ball->setPosition (ball->position() - collisionNormal * (ABS(dist3) - ball->radius()));
 					}
 
 					if(collision) {
@@ -555,7 +554,7 @@ class ParticleSystem {
 						Vector2D relativeVelocity = bat->velocity() - ball->velocity();
 
 						// coefficient 1.0 to 2.0 is inelastic to elastic collision
-						double J = -1.8 * relativeVelocity.dot(collisionNormal);
+						double J = -1.0 * relativeVelocity.dot(collisionNormal);
 						J /= 1.0 / ball->mass() + 1.0 / bat->mass();
 
 						// calculate impulse
