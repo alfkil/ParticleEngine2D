@@ -496,26 +496,20 @@ class ParticleSystem {
 				for (int j = 0; j < bats.size(); j++) {
 					Bat *bat = bats[j];
 
-					Vector2D end1 = bat->endpoint1();
-					Vector2D end2 = bat->endpoint2();
-
-					Vector2D dist1 = end1 - bat->position(); //from center of bat to end
-					Vector2D dist2 = end2 - bat->position();
-
 					Vector2D toBallFromBatC = ball->position() - bat->position();
 
-					double dist3 = toBallFromBatC.projectOnto(bat->normal());
-					double dist4 = toBallFromBatC.projectOnto(bat->normal().perp());
+					double projNorm = toBallFromBatC.projectOnto(bat->normal());
+					double projPerpNorm = toBallFromBatC.projectOnto(bat->normal().perp());
 
 					bool collision = false;
 					Vector2D collisionPoint, collisionNormal;
 
 					// test for collision with end1
-					if(dist4 < -dist1.length()) {
-						Vector2D toBall = ball->position() - end1;
+					if(projPerpNorm < -bat->width()/2.0) {
+						Vector2D toBall = ball->position() - bat->endpoint1();
 						if (toBall.length() < ball->radius()) {
 							collision = true;
-							collisionPoint = end1;
+							collisionPoint = bat->endpoint1();;
 							collisionNormal = toBall;
 
 							// move out of contact
@@ -524,11 +518,11 @@ class ParticleSystem {
 						}
 					}
 					// test for collision with end2
-					else if(dist4 > dist2.length()) {
-						Vector2D toBall = ball->position() - end2;
+					else if(projPerpNorm > bat->width()/2.0) {
+						Vector2D toBall = ball->position() - bat->endpoint2();
 						if(toBall.length() < ball->radius()) {
 							collision = true;
-							collisionPoint = end2;
+							collisionPoint = bat->endpoint2();
 							collisionNormal = toBall;
 
 							// move out of contact
@@ -537,13 +531,13 @@ class ParticleSystem {
 						}
 					}
 					// test for collision against side
-					else if (ABS(dist3) < ball->radius()) {
+					else if (ABS(projNorm) < ball->radius()) {
 						collision = true;
 						collisionPoint = bat->position();
-						collisionNormal = bat->normal() * SIGN(dist3);
+						collisionNormal = bat->normal() * SIGN(projNorm);
 
 						// move out of contact
-						ball->setPosition (ball->position() - collisionNormal * (ABS(dist3) - ball->radius()));
+						ball->setPosition (ball->position() - collisionNormal * (ABS(projNorm) - ball->radius()));
 					}
 
 					if(collision) {
@@ -565,8 +559,8 @@ class ParticleSystem {
 						bat->addVelocity(Impulse, 1.0 / bat->mass());
 
 						// apply torque
-						ball->addTorque (20.0 * dist3 * SIGN(dist4) * J) ;// / ball->momentOfInertia());
-						bat->addAngularVelocity (-10.0 * dist3 * SIGN(dist4) * J ) ; /// bat->momentOfInertia());
+						ball->addTorque (20.0 * projNorm * SIGN(projPerpNorm) * J) ;// / ball->momentOfInertia());
+						bat->addAngularVelocity (-10.0 * projNorm * SIGN(projPerpNorm) * J ) ; /// bat->momentOfInertia());
 					}
 				}
 			}
