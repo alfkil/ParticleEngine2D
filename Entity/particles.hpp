@@ -253,6 +253,10 @@ class Bat : public Particle {
 			return _angle;
 		}
 
+		Vector2D normal() {
+			return Vector2D(cos(_angle), sin(_angle));
+		}
+
 		double width() {
 			return _width;
 		}
@@ -394,8 +398,10 @@ class ParticleSystem {
 				Bat *bat = bats[i];
 				bat->addAngle (bat->angularVelocity() * deltaTime);
 				bat->addAngularVelocity (bat->torque() * deltaTime);
-				bat->addAngularVelocity (-bat->angle());
-				bat->scaleAngularVelocity (0.95);
+
+				// -- add elastic drag to bat angle
+				// bat->addAngularVelocity (-bat->angle());
+				// bat->scaleAngularVelocity (0.95);
 			}
 			for (int i = 0; i < balls.size(); i++) {
 				Ball *ball = balls[i];
@@ -492,22 +498,20 @@ class ParticleSystem {
 
 					Vector2D end1 = bat->endpoint1();
 					Vector2D end2 = bat->endpoint2();
+
 					Vector2D dist1 = end1 - bat->position(); //from center of bat to end
 					Vector2D dist2 = end2 - bat->position();
 
 					Vector2D toBallFromBatC = ball->position() - bat->position();
-					onto1 = toBallFromBatC.projectOnto(dist1);
-					onto2 = toBallFromBatC.projectOnto(dist2);
 
-					Vector2D normal(cos(bat->angle()), sin(bat->angle()));
-					double dist3 = toBallFromBatC.projectOnto(normal);
-					double dist4 = toBallFromBatC.projectOnto(normal.perp());
+					double dist3 = toBallFromBatC.projectOnto(bat->normal());
+					double dist4 = toBallFromBatC.projectOnto(bat->normal().perp());
 
 					bool collision = false;
 					Vector2D collisionPoint, collisionNormal;
 
 					// test for collision with end1
-					if(onto1 > dist1.length()) {
+					if(dist4 < -dist1.length()) {
 						Vector2D toBall = ball->position() - end1;
 						if (toBall.length() < ball->radius()) {
 							collision = true;
@@ -520,7 +524,7 @@ class ParticleSystem {
 						}
 					}
 					// test for collision with end2
-					else if(onto2 > dist2.length()) {
+					else if(dist4 > dist2.length()) {
 						Vector2D toBall = ball->position() - end2;
 						if(toBall.length() < ball->radius()) {
 							collision = true;
@@ -536,10 +540,11 @@ class ParticleSystem {
 					else if (ABS(dist3) < ball->radius()) {
 						collision = true;
 						collisionPoint = bat->position();
-						collisionNormal = toBallFromBatC;
+						collisionNormal = bat->normal() * SIGN(dist3); // this could be a bit more in
 
 						// move out of contact
-						ball->setPosition (ball->position() - normal * (dist3 - ball->radius()));
+						// if(dist3 - ball->radius() < 0.0)
+						// 	ball->setPosition (ball->position() - collisionNormal * (dist3 - ball->radius()));
 					}
 
 					if(collision) {

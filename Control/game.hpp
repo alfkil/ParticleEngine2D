@@ -53,7 +53,7 @@ class Game {
 			// Stick *stick3 = system.addStick (1.0, -1.0, 0.1);
 			// system.addRope (stick3, ball3, 8); //number of joints on rope
 
-			bat = system.addBat (0.0, 1.0, 2.0 /*mass*/, 0.0 /*M_PI/2.0*/ /*angle*/, 0.3 /*width*/);
+			bat = system.addBat (0.0, 1.0, 2.0 /*mass*/, M_PI/2.0 /*angle*/, 0.3 /*width*/);
 		}
 
     public:
