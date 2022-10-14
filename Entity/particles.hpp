@@ -6,6 +6,8 @@
 
 #include <vector>
 
+#include <iostream>
+
 using namespace std;
 
 #define ABS(x) ((x) < 0.0f ? -(x) : (x))
@@ -78,7 +80,7 @@ class Particle {
 			if (!_isStatic) {
 				//take Euler step for now
 				pos += vel * deltaTime;
-				vel += _force * deltaTime;
+				vel += _force * 1.0 / _mass * deltaTime;
 			}
 		}
 
@@ -204,24 +206,24 @@ class Spring {
 			return p2->position();
 		}
 
-		void computeForce () {
+		void computeForce (double deltaTime) {
 			if(p1->position() == p2->position()) {
 				return;
 			}
 
 			Vector2D deltaPos = p2->position() - p1->position(); 
-			float distance = deltaPos.length();
+			double distance = deltaPos.length();
 
 			Vector2D deltaVel = p2->velocity() - p1->velocity();
-			float dotvec = deltaPos.dot(deltaVel);
-			
-			float springForce = distance > length ? ks * (distance - length) / distance : 0.0;
+			double dotvec = deltaPos.dot(deltaVel);
+		
+			double springForce = 100.0 * (distance - length) / distance;
 
-			Vector2D spring = deltaPos.eigen() * springForce;
-			spring += deltaVel * kd;
+			Vector2D spring = deltaPos.eigen() * springForce ;
+			// spring += deltaVel * kd;
 
 			p1->addForce(spring);
-			p2->addForce(Vector2D(0.0, 0.0) - spring);
+			p2->addForce(spring.negate());
 		}
 };
 
@@ -369,7 +371,7 @@ class ParticleSystem {
 			addSpring (prevPart, ball, length);
 		}
 
-		void computeForces() {
+		void computeForces(double deltaTime) {
 			for(int i = 0; i < particles.size(); i++) {
 				Particle *part = particles[i];
 				part->resetForce();
@@ -379,7 +381,7 @@ class ParticleSystem {
 
 			for (int i = 0; i < springs.size(); i++) {
 				Spring *spring = springs[i];
-				spring->computeForce();
+				spring->computeForce(deltaTime);
 			}
 		}
 
@@ -391,17 +393,17 @@ class ParticleSystem {
 			for (int i = 0; i < bats.size(); i++) {
 				Bat *bat = bats[i];
 				bat->addAngle (bat->angularVelocity() * deltaTime);
-				bat->addAngularVelocity (bat->torque() * deltaTime / bat->momentOfInertia());
+				bat->addAngularVelocity (bat->torque() * deltaTime);
 				bat->addAngularVelocity (-bat->angle());
 				bat->scaleAngularVelocity (0.95);
 			}
 			for (int i = 0; i < balls.size(); i++) {
 				Ball *ball = balls[i];
 				ball->addAngle (ball->angularVelocity() * deltaTime);
-				ball->addAngularVelocity (ball->torque() * deltaTime / ball->momentOfInertia());
-//				ball->addAngularVelocity (-ball->angle());
-				ball->scaleAngularVelocity (1.0 - 0.05 * deltaTime); //angular drag
-				ball->scaleVelocity(1.0 - 0.1 * deltaTime); //drag
+				ball->addAngularVelocity (ball->torque() * deltaTime);
+				ball->scaleAngularVelocity (1.0 - 0.2 * deltaTime); //angular drag
+
+				ball->scaleVelocity(1.0 - 0.5 * deltaTime); //drag
 			}
 		}
 
@@ -441,7 +443,7 @@ class ParticleSystem {
 						Vector2D relativeVelocity = ball1->velocity()- ball2->velocity();	 // - perprbp * bat->angularVelocity();
 
 						Vector2D collisionNormal = dist;
-						double J = -0.5 * (relativeVelocity.dot(collisionNormal)) /
+						double J = -0.2 * (relativeVelocity.dot(collisionNormal)) /
 									(collisionNormal.dot(collisionNormal));
 
 						//apply impulse
@@ -449,8 +451,8 @@ class ParticleSystem {
 						ball2->addVelocity(collisionNormal.eigen(), -J / ball2->mass());
 						double dist3 = ball1->velocity().projectOnto(collisionNormal.perp());
 						double dist4 = ball1->velocity().projectOnto(collisionNormal);
-						ball1->addTorque (20.0 * dist3 * SIGN(dist4) * J) ;// / ball->momentOfInertia());
-						ball2->addTorque (-20.0 * dist3 * SIGN(dist4) * J) ;// / ball->momentOfInertia());
+						ball1->addTorque (dist3 * SIGN(dist4) * J) ;// / ball->momentOfInertia());
+						ball2->addTorque (-1.0 * dist3 * SIGN(dist4) * J) ;// / ball->momentOfInertia());
 					}
 				}
 			}
@@ -504,7 +506,8 @@ class ParticleSystem {
 							collisionNormal = toBall;
 							// printf("Hit end 1\n");
 						// de-collide - move out of the way
-							ball->setPosition (ball->position() + (ball->position() - end1) * (normal.perp().length() - ball->radius()));
+							if(toBall.length() - ball->radius() < 0.0)
+								ball->setPosition (ball->position() - toBall * (toBall.length() - ball->radius()));
 						}
 					}
 					else if(onto2 > dist2.length()) {
@@ -514,8 +517,10 @@ class ParticleSystem {
 							collision = true;
 							collisionPoint = end2;
 							collisionNormal = toBall;
+
 						// de-collide - move out of the way
-							ball->setPosition (ball->position() + (ball->position() - end2) * (normal.perp().length() - ball->radius()));
+							if(toBall.length() - ball->radius() < 0.0)
+								ball->setPosition (ball->position() - toBall * (toBall.length() - ball->radius()));
 						}
 					} //side
 					else if (ABS(dist3) < ball->radius()) {
@@ -524,22 +529,30 @@ class ParticleSystem {
 						collisionPoint = bat->position();
 						collisionNormal = toBallFromBatC;
 						// de-collide - move out of the way
-						ball->setPosition (ball->position() + normal * (dist3 - ball->radius()));
+						ball->setPosition (ball->position() - normal * (dist3 - ball->radius()));
 					}
 
 					if(collision) {
 						collisionNormal = collisionNormal.eigen();
-						Vector2D rap = collisionPoint - ball->position();
-						Vector2D rbp = collisionPoint - bat->position();
+						// Vector2D rap = collisionPoint - ball->position();
+						// Vector2D rbp = collisionPoint - bat->position();
 						
-						Vector2D relativeVelocity = ball->velocity()- bat->velocity();	 // - perprbp * bat->angularVelocity();
+						Vector2D relativeVelocity = ball->velocity() - bat->velocity();	 // - perprbp * bat->angularVelocity();
 
-						double J = -0.5 * (relativeVelocity.dot(collisionNormal)) /
-									(collisionNormal.dot(collisionNormal));
+						//why do we need such an odd coefficient?
+						double J = 2.0 * relativeVelocity.dot(collisionNormal); // /
+							// collisionNormal.dot(collisionNormal);
 
+						// if(J < 0) continue;
+						J /= 1.0 / ball->mass() + 1.0 / bat->mass();
+
+						std::cout << "J: " << J << "\n";
+						Vector2D Impulse = collisionNormal * J;
 						//apply impulse
-						ball->addVelocity(collisionNormal.eigen(), J / ball->mass());
-						bat->addVelocity(collisionNormal.eigen(), -J / bat->mass());
+						std::cout << "Impulse : " << Impulse.toString() << "\n";
+
+						ball->addVelocity(Impulse, -1.0 / ball->mass());
+						bat->addVelocity(Impulse, 1.0 / bat->mass());
 						ball->addTorque (20.0 * dist3 * SIGN(dist4) * J) ;// / ball->momentOfInertia());
 						bat->addAngularVelocity (-10.0 * dist3 * SIGN(dist4) * J ) ; /// bat->momentOfInertia());
 					}

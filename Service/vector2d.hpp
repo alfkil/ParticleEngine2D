@@ -2,6 +2,7 @@
 #define VECTOR2D_hpp
 
 #include <math.h>
+#include <sstream>
 
 class Vector2D {
 	private:
@@ -37,6 +38,10 @@ class Vector2D {
 		double perpdot (Vector2D const &other) {
 			return _x * other._y - _y * other._x;
 		}
+
+		// Vector2D operator = (Vector2D other) {
+		// 	return Vector2D(other._x, other._y);
+		// }
 
 		Vector2D operator += (Vector2D const &other) {
 			_x += other._x;
@@ -85,6 +90,11 @@ class Vector2D {
 
 		Vector2D negate() {
 			return Vector2D(-_x, -_y);
+		}
+		std::string toString() {
+			std::stringstream a;
+			a << "(" << _x << ", " << _y << ")";
+			return a.str();
 		}
 };
 #endif
