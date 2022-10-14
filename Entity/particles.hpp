@@ -435,26 +435,28 @@ class ParticleSystem {
 					Vector2D dist = ball1->position() - ball2->position();
 
 					if(dist.length() < ball1->radius() + ball2->radius()) {
-						//move out of contact
+						// move out of contact
 						float factor = ball1->radius() + ball2->radius() - dist.length();
 						ball1->setPosition(ball1->position() + dist * factor / 2.0);
 						ball2->setPosition(ball2->position() - dist * factor / 2.0);
 
+						// calculate relative velocity
 						Vector2D relativeVelocity = ball1->velocity()- ball2->velocity();	 // - perprbp * bat->angularVelocity();
 
+						// collision normal must be eigen vector
 						Vector2D collisionNormal = dist.eigen();
-						double J = -2.0 * (relativeVelocity.dot(collisionNormal)); // /
-									// (collisionNormal.dot(collisionNormal));
+
+						// calculate impulse
+						double J = -2.0 * (relativeVelocity.dot(collisionNormal));
 						J /= 1.0 / ball1->mass() + 1.0 / ball2->mass();
 
-						std::cout << "J: " << J << "\n";
 						Vector2D Impulse = collisionNormal * J;
-						//apply impulse
-						std::cout << "Impulse : " << Impulse.toString() << "\n";
 
 						//apply impulse
 						ball1->addVelocity(Impulse, 1.0 / ball1->mass());
 						ball2->addVelocity(Impulse, -1.0 / ball2->mass());
+
+						// apply torque
 						double dist3 = ball1->velocity().projectOnto(collisionNormal.perp());
 						double dist4 = ball1->velocity().projectOnto(collisionNormal);
 						ball1->addTorque (dist3 * SIGN(dist4) * J) ;// / ball->momentOfInertia());
@@ -503,62 +505,62 @@ class ParticleSystem {
 
 					bool collision = false;
 					Vector2D collisionPoint, collisionNormal;
-					//ends
+
+					// test for collision with end1
 					if(onto1 > dist1.length()) {
 						Vector2D toBall = ball->position() - end1;
 						if (toBall.length() < ball->radius()) {
 							collision = true;
 							collisionPoint = end1;
 							collisionNormal = toBall;
-							// printf("Hit end 1\n");
-						// de-collide - move out of the way
+
+							// move out of contact
 							if(toBall.length() - ball->radius() < 0.0)
 								ball->setPosition (ball->position() - toBall * (toBall.length() - ball->radius()));
 						}
 					}
+					// test for collision with end2
 					else if(onto2 > dist2.length()) {
 						Vector2D toBall = ball->position() - end2;
 						if(toBall.length() < ball->radius()) {
-							// printf("Hit end 2\n");
 							collision = true;
 							collisionPoint = end2;
 							collisionNormal = toBall;
 
-						// de-collide - move out of the way
+							// move out of contact
 							if(toBall.length() - ball->radius() < 0.0)
 								ball->setPosition (ball->position() - toBall * (toBall.length() - ball->radius()));
 						}
-					} //side
+					}
+					// test for collision against side
 					else if (ABS(dist3) < ball->radius()) {
-						// printf("Hit center\n");
 						collision = true;
 						collisionPoint = bat->position();
 						collisionNormal = toBallFromBatC;
-						// de-collide - move out of the way
+
+						// move out of contact
 						ball->setPosition (ball->position() - normal * (dist3 - ball->radius()));
 					}
 
 					if(collision) {
+						// collision normal must be eigen vector
 						collisionNormal = collisionNormal.eigen();
-						// Vector2D rap = collisionPoint - ball->position();
-						// Vector2D rbp = collisionPoint - bat->position();
 						
-						Vector2D relativeVelocity = bat->velocity() - ball->velocity();	 // - perprbp * bat->angularVelocity();
+						// calculate relative velocity
+						Vector2D relativeVelocity = bat->velocity() - ball->velocity();
 
-						//why do we need such an odd coefficient?
-						double J = 1.8 * relativeVelocity.dot(collisionNormal); // /
-							// collisionNormal.dot(collisionNormal);
-
-						// if(J < 0) continue;
+						// coefficient 1.0 to 2.0 is inelastic to elastic collision
+						double J = -1.8 * relativeVelocity.dot(collisionNormal);
 						J /= 1.0 / ball->mass() + 1.0 / bat->mass();
 
-						std::cout << "J: " << J << "\n";
+						// calculate impulse
 						Vector2D Impulse = collisionNormal * J;
-						//apply impulse
-						std::cout << "Impulse : " << Impulse.toString() << "\n";
 
-						ball->addVelocity(Impulse, 1.0 / ball->mass());
-						bat->addVelocity(Impulse, -1.0 / bat->mass());
+						// apply impulse
+						ball->addVelocity(Impulse, -1.0 / ball->mass());
+						bat->addVelocity(Impulse, 1.0 / bat->mass());
+
+						// apply torque
 						ball->addTorque (20.0 * dist3 * SIGN(dist4) * J) ;// / ball->momentOfInertia());
 						bat->addAngularVelocity (-10.0 * dist3 * SIGN(dist4) * J ) ; /// bat->momentOfInertia());
 					}
@@ -568,94 +570,3 @@ class ParticleSystem {
 		}
 };
 #endif
-			// //balls against bats
-			// for (int i = 0; i < balls.size(); i++) {
-			// 	Ball *ball = balls[i];
-			// 	for (int j = 0; j < bats.size(); j++) {
-			// 		Bat *bat = bats[j];
-
-			// 		Vector2D end1 = bat->endpoint1();
-			// 		Vector2D end2 = bat->endpoint2();
-			// 		Vector2D dist1 = end1 - bat->position(); //from center of bat to end
-			// 		Vector2D dist2 = end2 - bat->position();
-
-			// 		Vector2D toBallFromBatC = ball->position() - bat->position();
-			// 		onto1 = toBallFromBatC.projectOnto(dist1);
-			// 		onto2 = toBallFromBatC.projectOnto(dist2);
-
-			// 		Vector2D normal(cos(bat->angle()), sin(bat->angle()));
-			// 		double dist3 = toBallFromBatC.projectOnto(normal);
-
-			// 		double dist4 = toBallFromBatC.projectOnto(normal.perp());
-
-			// 		bool collision = false;
-			// 		Vector2D collisionPoint, collisionNormal;
-			// 		//ends
-			// 		if(onto1 > dist1.length()) {
-			// 			Vector2D toBall = ball->position() - end1;
-			// 			if (toBall.length() < ball->radius()) {
-			// 				collision = true;
-			// 				collisionPoint = end1;
-			// 				collisionNormal = toBall;
-			// 				// bat->addTorque(dist3 * (20.0*M_PI/20.0*bat->mass()/deltaTime));
-			// 				// ball->reflect(ball->position() - end1);
-			// 				// ball->addTorque (dist4 * (20.0*M_PI/20.0*ball->mass()/deltaTime));
-			// 				printf("Hit end 1\n");
-			// 			}
-			// 		}
-			// 		else if(onto2 > dist2.length()) {
-			// 			Vector2D toBall = ball->position() - end2;
-			// 			if(toBall.length() < ball->radius()) {
-			// 				printf("Hit end 2\n");
-			// 				collision = true;
-			// 				collisionPoint = end2;
-			// 				collisionNormal = toBall;
-			// 				// bat->addTorque(-dist3 * (20.0*M_PI/20.0*bat->mass()/deltaTime));
-			// 				// ball->reflect(ball->position() - end2);
-			// 				// ball->addTorque (dist4 * (20.0*M_PI/20.0*ball->mass()/deltaTime));
-			// 			}
-			// 		} //side
-			// 		else if (ABS(dist3) < ball->radius()) {
-			// 			printf("Hit center\n");
-			// 			collision = true;
-			// 			collisionPoint = bat->position();
-			// 			collisionNormal = toBallFromBatC;
-			// 			// ball->addForce (bat->force());
-			// 			// ball->reflect (normal);
-			// 				// ball->addTorque (dist4 * (20.0*M_PI/20.0*ball->mass()/deltaTime));
-			// 		}
-
-			// 		if(collision) {
-			// 			collisionNormal = collisionNormal.eigen();
-			// 			Vector2D rap = collisionPoint - ball->position();
-			// 			Vector2D rbp = collisionPoint - bat->position();
-			// 			double rapperp = rap.perpdot(collisionNormal);
-			// 			double rbpperp = rbp.perpdot(collisionNormal);
-				
-			// 			const double restitution = 0.9;
-			// 			Vector2D perprbp = rbp.perp();
-			// 			Vector2D relativeVelocity = ball->velocity()- bat->velocity() - perprbp * bat->angularVelocity();
-				
-			// 			// double J = -(1 + restitution)*(relativeVelocity.dot(collisionNormal)) /
-			// 			// 			(collisionNormal.dot(collisionNormal)) *
-			// 			// 			(1/bat->mass() + 1/ball->mass()  + (rbpperp*rbpperp)/bat->momentOfInertia()); //+ sqr(rapperp)/myball.momentofinertia
-
-
-			// 			double J = -5.0 * (relativeVelocity.dot(collisionNormal)) /
-			// 						(collisionNormal.dot(collisionNormal));
-
-			// 			//apply impulse
-			// 			ball->addVelocity(collisionNormal.eigen(), J / ball->mass());
-			// 			bat->addVelocity(collisionNormal.eigen(), -J / bat->mass());
-			// 			ball->addAngularVelocity (-dist3 * J) ;// / ball->momentOfInertia());
-			// 			bat->addAngularVelocity (-dist3 * J ) ; /// bat->momentOfInertia());
-				
-			// 	// 		//spin
-			// 	// 		// Vector2D
-			// 	// 		// vector2 batperp, velproj;
-			// 	// 		// vector_copy(&mybat.normal, &batperp);
-			// 	// 		// vector_perp(&batperp);
-			// 	// 		// vector_project(&relativevel, &batperp, &velproj);
-			// 	// 		// myball.angularvelocity -= 0.01*vector_length(&velproj)*j/myball.momentofinertia;
-			// 		}
-			// 	}
