@@ -554,7 +554,7 @@ class ParticleSystem {
 						Vector2D relativeVelocity = bat->velocity() - ball->velocity();
 
 						// coefficient 1.0 to 2.0 is inelastic to elastic collision
-						double J = -1.0 * relativeVelocity.dot(collisionNormal);
+						double J = -1.8 * relativeVelocity.dot(collisionNormal);
 						J /= 1.0 / ball->mass() + 1.0 / bat->mass();
 
 						// calculate impulse
