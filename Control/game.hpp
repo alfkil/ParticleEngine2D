@@ -35,8 +35,8 @@ class Game {
 							0.7,	//mass
 							0.2 	//radius
                             );
-			// Stick *stick1 = system.addStick (-1.0, -1.0, 0.1);
-			// system.addRope (stick1, ball, 0); //number of joints on rope
+			Stick *stick1 = system.addStick (-1.0, -1.0, 0.1);
+			system.addRope (stick1, ball, 0.2, 10); //number of joints on rope
 
 			Ball *ball2 = system.addBall (
 							-1.0, -2.0, //position

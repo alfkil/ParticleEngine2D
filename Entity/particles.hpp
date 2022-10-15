@@ -16,7 +16,6 @@ using namespace std;
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 
 int debugFlag = 0;
-double onto1, onto2;
 
 class Particle {
 	private:
@@ -194,8 +193,8 @@ class Spring {
 			p2(_p2),
 			length(_length)
 		{
-			ks = p1->isStatic() ? 3000.0 : 1500.0;
-			kd = 42.0;
+			ks = p1->isStatic() ? 1000.0 : 500.0;
+			kd = p1->isStatic() ? 10.0f : 5.0f;
 		}
 
 		Vector2D position1 () {
@@ -210,20 +209,27 @@ class Spring {
 			if(p1->position() == p2->position()) {
 				return;
 			}
-
-			Vector2D deltaPos = p2->position() - p1->position(); 
+                  
+			Vector2D deltaPos = p1->position() - p2->position();
 			double distance = deltaPos.length();
 
-			Vector2D deltaVel = p2->velocity() - p1->velocity();
-			double dotvec = deltaPos.dot(deltaVel);
-		
-			double springForce = 100.0 * (distance - length) / distance;
+            // The Spring Force Is Added To The Force      
+            Vector2D force;
+			if(distance > length)
+				force = (deltaPos.eigen()) * (distance - length) * ks;
 
-			Vector2D spring = deltaPos.eigen() * springForce ;
+			force += (p1->velocity() - p2->velocity()) * kd;
+
+			// Vector2D deltaVel = p2->velocity() - p1->velocity();
+			// double dotvec = deltaPos.dot(deltaVel);
+		
+			// double springForce = 20.0 * (distance - length) / distance;
+
+			// Vector2D spring = deltaPos.eigen() * springForce ;
 			// spring += deltaVel * kd;
 
-			p1->addForce(spring);
-			p2->addForce(spring.negate());
+			p1->addForce(force.negate());
+			p2->addForce(force);
 		}
 };
 
@@ -358,21 +364,21 @@ class ParticleSystem {
 			springs.push_back( new Spring (p1, p2, length));
 		}
 
-		void addRope(Stick *stick, Ball *ball, int joints) {
+		void addRope(Stick *stick, Ball *ball, double length, int joints) {
 			Vector2D pos(stick->position());
 			Vector2D end(ball->position());
-			Vector2D inc = (end - pos) / (joints + 1);
-			double length = inc.length();
+			Vector2D inc = (end - pos).eigen() * length / (joints + 1); //(end - pos) / (joints + 1);
+			double len = inc.length();
 
 			Particle *prevPart = stick;
 			for (int i = 0; i < joints; i++) {
 				pos += inc;
-				Particle *part = addParticle (pos.x(), pos.y(), 0.1);
+				Particle *part = addParticle (pos.x(), pos.y(), 0.05);
 
-				addSpring (prevPart, part, length);
+				addSpring (prevPart, part, len);
 				prevPart = part;
 			}
-			addSpring (prevPart, ball, length);
+			addSpring (prevPart, ball, len);
 		}
 
 		void computeForces(double deltaTime) {
@@ -400,14 +406,14 @@ class ParticleSystem {
 				bat->addAngularVelocity (bat->torque() * deltaTime);
 
 				// -- add elastic drag to bat angle
-				// bat->addAngularVelocity (-bat->angle());
-				// bat->scaleAngularVelocity (0.95);
+				bat->addAngularVelocity (-bat->angle());
+				bat->scaleAngularVelocity (0.95);
 			}
 			for (int i = 0; i < balls.size(); i++) {
 				Ball *ball = balls[i];
 				ball->addAngle (ball->angularVelocity() * deltaTime);
 				ball->addAngularVelocity (ball->torque() * deltaTime);
-				ball->scaleAngularVelocity (1.0 - 0.2 * deltaTime); //angular drag
+				ball->scaleAngularVelocity (0.97); //1.0 - 0.3 * deltaTime); //angular drag
 
 				ball->scaleVelocity(1.0 - 0.5 * deltaTime); //drag
 			}
@@ -438,6 +444,7 @@ class ParticleSystem {
 				for (int j = i+1; j < balls.size(); j++) {
 					Ball *ball1 = balls[i];
 					Ball *ball2 = balls[j];
+
 					Vector2D dist = ball1->position() - ball2->position();
 
 					if(dist.length() < ball1->radius() + ball2->radius()) {
@@ -496,10 +503,10 @@ class ParticleSystem {
 				for (int j = 0; j < bats.size(); j++) {
 					Bat *bat = bats[j];
 
-					Vector2D toBall = ball->position() - bat->position();
+					Vector2D dist = ball->position() - bat->position();
 
-					double projNorm = toBall.projectOnto(bat->normal());
-					double projPerpNorm = toBall.projectOnto(bat->normal().perp());
+					double projNorm = dist.projectOnto(bat->normal());
+					double projPerpNorm = dist.projectOnto(bat->normal().perp());
 
 					bool collision = false;
 					Vector2D collisionPoint, collisionNormal;
